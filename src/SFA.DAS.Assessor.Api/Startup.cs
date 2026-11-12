@@ -1,0 +1,158 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
+using SFA.DAS.Api.Common.AppStart;
+using SFA.DAS.Configuration.AzureTableStorage;
+using SFA.DAS.Assessor.Api.AppStart;
+using SFA.DAS.Assessor.Api.Authentication;
+using SFA.DAS.Assessor.Api.Configuration;
+using SFA.DAS.Assessor.Api.TaskQueue;
+using SFA.DAS.Assessor.Domain.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+
+namespace SFA.DAS.Assessor.Api
+{
+    [ExcludeFromCodeCoverage]
+    public class Startup
+    {
+        private readonly IWebHostEnvironment Environment;
+        public IConfiguration Configuration { get; }
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment environment)
+        {
+            var config = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddEnvironmentVariables();
+
+            config.AddAzureTableStorage(options =>
+            {
+                options.ConfigurationKeys = configuration?["ConfigNames"]?.Split(",");
+                options.StorageConnectionString = configuration?["ConfigurationStorageConnectionString"];
+                options.EnvironmentName = configuration?["EnvironmentName"];
+                options.PreFixConfigurationKeys = false;
+                options.ConfigurationKeysRawJsonResult = new[] { ConfigurationKeys.EncodingConfig };
+            });
+#if DEBUG
+            config.AddJsonFile($"appsettings.Development.json", optional: true);
+#endif
+
+            Configuration = config.Build();
+            Environment = environment;
+        }
+
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddOpenTelemetryRegistration(Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]!);
+            services.AddHsts(options =>
+            {
+                options.MaxAge = TimeSpan.FromDays(90);
+            });
+            var applicationSettingsSection = Configuration.GetSection(nameof(ApplicationSettings));
+            var applicationSettings = applicationSettingsSection.Get<ApplicationSettings>();
+
+            var policies = new Dictionary<string, string>
+                {
+                    {PolicyNames.Default, RoleNames.Default}
+                };
+
+            services.Configure<ApplicationSettings>(applicationSettingsSection);
+            services.AddSingleton(s => s.GetRequiredService<IOptions<ApplicationSettings>>().Value);
+
+            var isDevelopment = Environment.IsDevelopment();
+            if (!isDevelopment)
+            {
+                services
+                    .AddAuthentication(applicationSettings?.AzureAd, policies);
+            }
+
+            services.AddSwaggerGen(opt =>
+            {
+                opt.SwaggerDoc("v1", new OpenApiInfo { Title = "SFA.DAS.Assessor.Api", Version = "v1" });
+
+                if (!isDevelopment)
+                {
+                    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                    {
+                        Name = "Authorization",
+                        Description = "JWT Authorization header using the Bearer scheme.",
+                        In = ParameterLocation.Header,
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        BearerFormat = "JWT"
+                    });
+
+                    opt.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                    });
+                }
+            });
+
+            services.AddDatabaseRegistration(Configuration);
+
+            services.AddHostedService<TaskQueueHostedService>();
+
+            services.AddHealthChecks()
+                .AddCheck<AssessorHealthCheck>(nameof(AssessorHealthCheck));
+
+            services
+                .AddControllers(o =>
+                {
+                    if (!isDevelopment)
+                    {
+                        o.Filters.Add(new AuthorizeFilter(PolicyNames.Default));
+                    }
+                })
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+                });
+
+            services.AddEncodingConfiguration(Configuration);
+            services.AddServices();
+        }
+
+        public static void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                // HSTS configured to 90 days in ConfigureServices.
+                app.UseHsts();
+            }
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "SFA.DAS.Assessor.Api v1");
+                c.RoutePrefix = string.Empty;
+            });
+
+            app.UseHttpsRedirection();
+
+            app.UseRouting();
+            app.UseMiddleware<SecurityHeadersMiddleware>();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                endpoints.MapHealthChecks("/ping");
+            });
+        }
+    }
+}
