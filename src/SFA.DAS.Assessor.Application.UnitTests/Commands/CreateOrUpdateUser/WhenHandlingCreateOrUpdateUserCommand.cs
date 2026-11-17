@@ -18,7 +18,6 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
         private CreateOrUpdateUserCommandHandler _sut = null!;
 
         private readonly DateTime _utcNow = DateTime.UtcNow;
-        private readonly DateTime _now = DateTime.Now;
 
         [SetUp]
         public void SetUp()
@@ -27,7 +26,6 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
             _dateTimeProviderMock = new Mock<IDateTimeProvider>();
 
             _dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(_utcNow);
-            _dateTimeProviderMock.SetupGet(x => x.Now).Returns(_now);
 
             _sut = new CreateOrUpdateUserCommandHandler(
                 _dateTimeProviderMock.Object,
@@ -62,7 +60,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
             addedUser.EmailAddress.Should().Be(command.EmailAddress);
             addedUser.PhoneNumber.Should().Be(command.PhoneNumber);
             addedUser.CreatedAt.Should().Be(_utcNow);
-            addedUser.LastLoginAt.Should().Be(_now);
+            addedUser.LastLoginAt.Should().Be(_utcNow);
             result.UserId.Should().Be(persistedUserId);
 
             _userEntityContextMock.Verify(
@@ -97,7 +95,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
             existingUser.DfeSignInUserId.Should().Be(command.DfeSignInUserId);
             existingUser.EmailAddress.Should().Be(command.EmailAddress);
             existingUser.PhoneNumber.Should().Be(command.PhoneNumber);
-            existingUser.LastLoginAt.Should().Be(_now);
+            existingUser.LastLoginAt.Should().Be(_utcNow);
             existingUser.CreatedAt.Should().Be(originalCreatedAt);
             result.UserId.Should().Be(existingUser.Id);
 
@@ -136,7 +134,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
             result.UserId.Should().Be(existingUser.Id);
             existingUser.EmailAddress.Should().Be(command.EmailAddress);
             existingUser.PhoneNumber.Should().Be(command.PhoneNumber);
-            existingUser.LastLoginAt.Should().Be(_now);
+            existingUser.LastLoginAt.Should().Be(_utcNow);
 
             _userEntityContextMock.Verify(
                 x => x.SaveChangesAsync(cancellationToken), Times.Once);

@@ -25,7 +25,7 @@ namespace SFA.DAS.Assessor.Application.Commands.CreateOrUpdateUser
             CancellationToken cancellationToken)
         {
             var user = await _userEntityContext.Get(command.DfeSignInUserId);
-            var lastLoginAt = _dateTimeProvider.Now;
+            var lastLoginAt = _dateTimeProvider.UtcNow;
 
             if (user is null)
             {
