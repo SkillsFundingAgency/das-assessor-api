@@ -7,6 +7,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 using SFA.DAS.Assessor.Api.Controllers;
@@ -75,6 +76,26 @@ namespace SFA.DAS.Assessor.Api.UnitTests.Controllers.Users
 
             statusCodeResult.Should().NotBeNull();
             statusCodeResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+        }
+
+        [Test, MoqAutoData]
+        public async Task And_UserDoesNotExist_Then_ReturnsNotFound(
+            string dfeSignInUserId,
+            Mock<IMediator> mediator)
+        {
+            mediator
+                .Setup(x => x.Send(
+                    It.Is<GetUserQuery>(query => query.DfeSignInUserId == dfeSignInUserId),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GetUserQueryResult { User = null });
+
+            var _sut = new UsersController(
+                mediator.Object,
+                NullLogger<UsersController>.Instance);
+
+            var result = await _sut.GetUser(dfeSignInUserId);
+
+            result.Should().BeOfType<NotFoundResult>();
         }
     }
 }

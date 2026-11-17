@@ -27,13 +27,20 @@ namespace SFA.DAS.Assessor.Api.Controllers
         [HttpGet("{dfeSignInUserId}")]
         [ProducesResponseType(typeof(GetUserResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUser(string dfeSignInUserId)
         {
             try
             {
-                var result = await _mediator.Send(new GetUserQuery { DfeSignInUserId = dfeSignInUserId });
-                return Ok((GetUserResponse?)result.User);
+                var result = await _mediator.Send(new GetUserQuery
+                {
+                    DfeSignInUserId = dfeSignInUserId
+                });
+
+                var response = (GetUserResponse?)result.User;
+
+                return response is null ? NotFound() : Ok(response);
             }
             catch (ValidationException ex)
             {
