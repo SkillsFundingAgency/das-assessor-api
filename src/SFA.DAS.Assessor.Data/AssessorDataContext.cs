@@ -12,17 +12,14 @@ using SFA.DAS.Assessor.Domain.Interfaces;
 namespace SFA.DAS.Assessor.Data
 {
     [ExcludeFromCodeCoverage]
-    public class AssessorDataContext : DbContext,
-        IUserEntityContext
+    public class AssessorDataContext : DbContext
     {
         private const string AzureResource = "https://database.windows.net/";
         private readonly ApplicationSettings? _configuration;
         private readonly ChainedTokenCredential? _chainedTokenCredentialProvider;
 
         public virtual DbSet<User> Users { get; set; }
-        
-        DbSet<User> IEntityContext<User>.Entities => Users;
-        
+
         public AssessorDataContext(IOptions<ApplicationSettings>? config,
             DbContextOptions<AssessorDataContext> options)
             : base(options)

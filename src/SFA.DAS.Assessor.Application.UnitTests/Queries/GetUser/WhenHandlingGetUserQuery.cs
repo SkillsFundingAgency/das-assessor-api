@@ -8,6 +8,7 @@ using FluentAssertions;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using NUnit.Framework;
 using SFA.DAS.Assessor.Application.Behaviours;
 using SFA.DAS.Assessor.Application.Queries.GetUser;
@@ -32,7 +33,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Queries
             await context.SaveChangesAsync();
 
             var query = new GetUserQuery() { DfeSignInUserId = govUkIdentifier };
-            var handler = new GetUserQueryHandler(context);
+            var handler = new GetUserQueryHandler(new UserEntityContext(context));
 
             // Act
             var result = await handler.Handle(query, CancellationToken.None);
@@ -58,7 +59,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Queries
         {
             // Arrange
             var query = new GetUserQuery() { DfeSignInUserId = "Unknown" };
-            var handler = new GetUserQueryHandler(context);
+            var handler = new GetUserQueryHandler(new UserEntityContext(context));
 
             // Act
             var result = await handler.Handle(query, CancellationToken.None);
@@ -88,7 +89,7 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Queries
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<GetUserQuery>());
             services.AddValidatorsFromAssemblyContaining<GetUserQuery>();
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehaviour<,>));
-            services.AddScoped<IUserEntityContext, AssessorDataContext>();
+            services.AddScoped(_ => Mock.Of<IUserEntityContext>());
 
             using var sp = services.BuildServiceProvider();
             var mediator = sp.GetRequiredService<IMediator>();

@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using SFA.DAS.Assessor.Domain.Entities;
@@ -19,32 +20,41 @@ namespace SFA.DAS.Assessor.Application.Commands.CreateOrUpdateUser
             _userEntityContext = userEntityContext;
         }
 
-        public async Task<CreateOrUpdateUserCommandResponse> Handle(CreateOrUpdateUserCommand command, CancellationToken cancellationToken)
+        public async Task<CreateOrUpdateUserCommandResponse> Handle(
+            CreateOrUpdateUserCommand command,
+            CancellationToken cancellationToken)
         {
-            User? user = await _userEntityContext.Get(command.DfeSignInUserId);
+            var user = await _userEntityContext.Get(command.DfeSignInUserId);
+            var lastLoginAt = _dateTimeProvider.Now;
 
-            if (user == null)
+            if (user is null)
             {
-                user = new User
+                var newUser = new User
                 {
                     DfeSignInUserId = command.DfeSignInUserId,
                     EmailAddress = command.EmailAddress,
-                    CreatedAt = _dateTimeProvider.UtcNow
+                    PhoneNumber = command.PhoneNumber,
+                    CreatedAt = _dateTimeProvider.UtcNow,
+                    LastLoginAt = lastLoginAt
                 };
 
-                _userEntityContext.Add(user);
-            }
-            else
-            {
-                user.EmailAddress = command.EmailAddress;
+                if (await _userEntityContext.TryCreateUserAsync(newUser, cancellationToken))
+                {
+                    return new CreateOrUpdateUserCommandResponse { UserId = newUser.Id };
+                }
+
+                user = await _userEntityContext.Get(command.DfeSignInUserId)
+                    ?? throw new InvalidOperationException(
+                        "The concurrently created Assessor user could not be found.");
             }
 
+            user.EmailAddress = command.EmailAddress;
             user.PhoneNumber = command.PhoneNumber;
-            user.LastLoginAt = _dateTimeProvider.Now;
+            user.LastLoginAt = lastLoginAt;
 
             await _userEntityContext.SaveChangesAsync(cancellationToken);
 
-            return new CreateOrUpdateUserCommandResponse() { UserId = user.Id };
+            return new CreateOrUpdateUserCommandResponse { UserId = user.Id };
         }
     }
 }

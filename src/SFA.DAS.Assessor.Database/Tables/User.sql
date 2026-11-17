@@ -9,3 +9,7 @@
     [CreatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_User_CreatedAt] DEFAULT SYSUTCDATETIME()
 )
 GO
+
+CREATE UNIQUE INDEX [UX_User_DfeSignInUserId]
+    ON [dbo].[User] ([DfeSignInUserId]);
+GO

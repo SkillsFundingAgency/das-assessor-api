@@ -117,7 +117,6 @@ namespace SFA.DAS.Assessor.Api
                     options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
                 });
 
-            services.AddEncodingConfiguration(Configuration);
             services.AddServices();
         }
 
