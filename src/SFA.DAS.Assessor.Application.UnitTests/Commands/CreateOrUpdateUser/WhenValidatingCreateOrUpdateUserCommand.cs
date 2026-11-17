@@ -64,5 +64,24 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Commands.CreateOrUpdateUser
             result.ShouldHaveValidationErrorFor(c => c.EmailAddress)
                 .WithErrorMessage("EmailAddress must not be empty");
         }
+
+        [Test]
+        public void Then_Error_If_Fields_Exceed_Database_Lengths()
+        {
+            var command = new CreateOrUpdateUserCommand
+            {
+                DfeSignInUserId = new string('a', 256),
+                EmailAddress = new string('a', 257),
+                PhoneNumber = new string('0', 21)
+            };
+
+            var _sut = new CreateOrUpdateUserCommandValidator(Mock.Of<IDateTimeProvider>());
+
+            var result = _sut.TestValidate(command);
+
+            result.ShouldHaveValidationErrorFor(x => x.DfeSignInUserId);
+            result.ShouldHaveValidationErrorFor(x => x.EmailAddress);
+            result.ShouldHaveValidationErrorFor(x => x.PhoneNumber);
+        }
     }
 }

@@ -9,11 +9,16 @@ namespace SFA.DAS.Assessor.Application.Commands.CreateOrUpdateUser
         {
             RuleFor(x => x.DfeSignInUserId)
                 .NotEmpty()
-                .WithMessage("DfeSignInUserId must not be empty");
+                .WithMessage("DfeSignInUserId must not be empty")
+                .MaximumLength(255);
 
             RuleFor(x => x.EmailAddress)
                 .NotEmpty()
-                .WithMessage("EmailAddress must not be empty");
+                .WithMessage("EmailAddress must not be empty")
+                .MaximumLength(256);
+
+            RuleFor(x => x.PhoneNumber)
+                .MaximumLength(20);
         }
     }
 }
