@@ -97,5 +97,30 @@ namespace SFA.DAS.Assessor.Application.UnitTests.Queries
             var act = async () => await mediator.Send(new GetUserQuery { DfeSignInUserId = null! });
             await act.Should().ThrowAsync<ValidationException>();
         }
+
+        [Test, AutoMoqData]
+        public async Task And_SubjectMatchesOnlyInternalUserId_Then_NullIsReturned(
+            AssessorDataContext context)
+        {
+            var internalUserId = Guid.NewGuid();
+
+            context.Users.Add(new User
+            {
+                Id = internalUserId,
+                DfeSignInUserId = Guid.NewGuid().ToString(),
+                EmailAddress = "test@example.com",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await context.SaveChangesAsync();
+
+            var _sut = new GetUserQueryHandler(new UserEntityContext(context));
+
+            var result = await _sut.Handle(
+                new GetUserQuery { DfeSignInUserId = internalUserId.ToString() },
+                CancellationToken.None);
+
+            result.User.Should().BeNull();
+        }
     }
 }

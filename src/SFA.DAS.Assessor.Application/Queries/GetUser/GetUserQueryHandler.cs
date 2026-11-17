@@ -1,8 +1,6 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
-using SFA.DAS.Assessor.Domain.Entities;
 using SFA.DAS.Assessor.Domain.Interfaces;
 
 namespace SFA.DAS.Assessor.Application.Queries.GetUser
@@ -16,13 +14,13 @@ namespace SFA.DAS.Assessor.Application.Queries.GetUser
             _userContext = userContext;
         }
 
-        public async Task<GetUserQueryResult> Handle(GetUserQuery request, CancellationToken cancellationToken)
+        public async Task<GetUserQueryResult> Handle(
+            GetUserQuery request,
+            CancellationToken cancellationToken)
         {
-            User? user = request.DfeSignInUserId != null ? await _userContext.Get(request.DfeSignInUserId) : null;
-            if (user == null && Guid.TryParse(request.DfeSignInUserId, out Guid userId))
-            {
-                user = await _userContext.GetByUserId(userId);
-            }
+            var user = request.DfeSignInUserId is null
+                ? null
+                : await _userContext.Get(request.DfeSignInUserId);
 
             return new GetUserQueryResult
             {
