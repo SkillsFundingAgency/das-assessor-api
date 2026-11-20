@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using SFA.DAS.Apim.Shared.Infrastructure.HealthCheck;
 using SFA.DAS.Apim.Shared.Interfaces;
 using SFA.DAS.Apim.Shared.Models;
 
@@ -45,6 +48,19 @@ public class AssessorApiClient(IInternalApiClient<AssessorApiConfiguration> apiC
     public Task<ApiResponse<TResponse>> PutWithResponseCode<TResponse>(IPutApiRequest request) where TResponse : class => apiClient.PutWithResponseCode<TResponse>(request);
     public Task<ApiResponse<TResponse>> PatchWithResponseCode<TData, TResponse>(IPatchApiRequest<TData> request, bool includeResponse = true) => apiClient.PatchWithResponseCode<TData, TResponse>(request, includeResponse);
     public Task<ApiResponse<TResponse>> PutWithResponseCode<TData, TResponse>(IPutApiRequest<TData> request) => apiClient.PutWithResponseCode<TData, TResponse>(request);
+}
+
+public class AssessorApiHealthCheck(
+    IAssessorApiClient<AssessorApiConfiguration> client,
+    ILogger<AssessorApiHealthCheck> logger)
+    : ApiHealthCheck<AssessorApiConfiguration>(
+        HealthCheckDescription,
+        HealthCheckResultDescription,
+        client,
+        logger), IHealthCheck
+{
+    public static readonly string HealthCheckDescription = @"Assessor API";
+    public static string HealthCheckResultDescription => HealthCheckDescription + " check";
 }
 
 public static class AddAssessorApiClientExtension
